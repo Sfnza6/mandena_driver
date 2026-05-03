@@ -281,8 +281,37 @@ class HomeController extends GetxController {
 
   bool isAcceptedOrder(Map<String, dynamic> o) => !isOffer(o);
 
+  /// ✅ طلب معيّن تلقائياً من النظام (ليس عرض يدوي)
+  bool isDirectAssignment(Map<String, dynamic> o) {
+    final type = '${o['assignment_type'] ?? ''}'.toLowerCase();
+    return type == 'direct' || type == 'auto' || type == 'assigned' || type.isEmpty;
+  }
+
   String orderStatus(Map<String, dynamic> o) {
     return '${o['status_order'] ?? o['status'] ?? ''}'.toLowerCase().trim();
+  }
+
+  /// نص الحالة بالعربية للسائق
+  String orderStatusArabic(Map<String, dynamic> o) {
+    final st = orderStatus(o);
+    switch (st) {
+      case 'processing':
+      case 'approved':
+      case 'accepted':
+        return 'جاري التحضير';
+      case 'assigned':
+      case 'ready':
+      case 'ready_for_driver':
+        return 'جاهز للاستلام';
+      case 'delivering':
+      case 'on_the_way':
+      case 'out_for_delivery':
+        return 'جاري التوصيل';
+      case 'delivered':
+        return 'تم التسليم';
+      default:
+        return 'معيّن عليك';
+    }
   }
 
   bool canStartDeliveryFor(Map<String, dynamic> o) {

@@ -96,7 +96,7 @@ class HomeView extends StatelessWidget {
                         padding: const EdgeInsets.fromLTRB(24, 0, 24, 34),
                         sliver: SliverList.separated(
                           itemCount: orders.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, _) =>
                               const SizedBox(height: 14),
                           itemBuilder: (_, i) {
                             final order = orders[i];
@@ -278,8 +278,8 @@ class _TopHeader extends StatelessWidget {
       barrierLabel: 'إغلاق القائمة',
       barrierColor: Colors.black.withOpacity(.55),
       transitionDuration: const Duration(milliseconds: 260),
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-      transitionBuilder: (_, animation, __, ___) {
+      pageBuilder: (_, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (_, animation, _, _) {
         final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,
@@ -757,205 +757,131 @@ class _IncomingOrderCard extends StatelessWidget {
       final rem = controller.remainingSeconds(order);
       final busy = controller.actionBusy.value;
       final address = _s(order['address'] ?? order['delivery_address'], '-');
+      final orderId = _s(order['order_id'] ?? order['id'], '');
+      final warning = rem <= 10;
 
-      return InkWell(
+      return _DriverOrderShell(
         onTap: () => Get.to(() => const OrderDetailsView(), arguments: order),
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-          decoration: BoxDecoration(
-            color: _primary,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(.12),
-                blurRadius: 14,
-                offset: const Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      _title(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        height: 1.15,
-                        fontWeight: FontWeight.w900,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _StatusBadge(
+                  text: rem > 0 ? 'عرض جديد' : 'انتهى العرض',
+                  icon: warning ? Icons.timer_off_rounded : Icons.bolt_rounded,
+                  color: warning ? _red : _primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        orderId.isEmpty ? 'طلبية جديدة' : 'طلبية #$orderId',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: HomeView._text,
+                          fontSize: 21,
+                          height: 1.15,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 5),
+                      Text(
+                        _title(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: HomeView._muted,
+                          fontSize: 12.5,
+                          height: 1.2,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  _ActionButton(
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _InfoBox(
+                    icon: Icons.route_outlined,
+                    label: 'المسافة',
+                    value: _distance(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _InfoBox(
+                    icon: Icons.timer_outlined,
+                    label: 'وقت الرد',
+                    value: rem > 0 ? '$rem ثانية' : 'انتهى الوقت',
+                    color: warning ? _red : _primary,
+                    softColor: warning
+                        ? _red.withOpacity(.08)
+                        : _primary.withOpacity(.08),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _AddressBox(address: address),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _PricePill(
+                    label: 'قيمة الطلب',
+                    value: _money(_orderPrice()),
+                    icon: Icons.receipt_long_rounded,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PricePill(
+                    label: 'التوصيل',
+                    value: _money(_deliveryFee()),
+                    icon: Icons.delivery_dining_rounded,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _ActionButton(
                     text: 'رفض',
+                    icon: Icons.close_rounded,
                     color: _red,
                     disabled: busy || rem <= 0,
                     onTap: () => controller.rejectOffer(order),
                   ),
-                  const SizedBox(width: 8),
-                  _ActionButton(
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionButton(
                     text: 'قبول',
+                    icon: Icons.check_rounded,
                     color: _green,
                     disabled: busy || rem <= 0,
                     onTap: () => controller.acceptOffer(order),
                   ),
-                ],
-              ),
-              const SizedBox(height: 13),
-              Row(
-                children: [
-                  Expanded(
-                    child: _OrderInfoLine(
-                      icon: Icons.route_outlined,
-                      label: 'المسافة',
-                      value: _distance(),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _OrderInfoLine(
-                      icon: Icons.timer_outlined,
-                      label: 'الوقت',
-                      value: rem > 0 ? '$rem ثانية' : 'انتهى الوقت',
-                      warning: rem <= 10,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              _OrderInfoLine(
-                icon: Icons.location_on_outlined,
-                label: 'العنوان',
-                value: address,
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 10,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _PriceBlock(
-                        label: 'سعر الطلبية',
-                        value: _money(_orderPrice()),
-                      ),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 34,
-                      color: Colors.white.withOpacity(.20),
-                    ),
-                    Expanded(
-                      child: _PriceBlock(
-                        label: 'سعر التوصيل',
-                        value: _money(_deliveryFee()),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       );
     });
-  }
-}
-
-class _OrderInfoLine extends StatelessWidget {
-  const _OrderInfoLine({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.warning = false,
-    this.maxLines = 1,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool warning;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: Colors.white, size: 16),
-        const SizedBox(width: 5),
-        Text(
-          '$label: ',
-          style: TextStyle(
-            color: Colors.white.withOpacity(.82),
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            maxLines: maxLines,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: warning ? const Color(0xFFFFF0C6) : Colors.white,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w900,
-              height: 1.35,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _PriceBlock extends StatelessWidget {
-  const _PriceBlock({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(.78),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
   }
 }
 
@@ -965,6 +891,8 @@ class _AcceptedOrderCard extends StatelessWidget {
   final Map<String, dynamic> order;
 
   static const Color _primary = HomeView._primary;
+  static const Color _primaryDark = HomeView._primaryDark;
+  static const Color _green = HomeView._green;
 
   String _s(dynamic v, [String fallback = '-']) {
     final text = '${v ?? ''}'.trim();
@@ -984,200 +912,537 @@ class _AcceptedOrderCard extends StatelessWidget {
     return 'الفرع غير محدد';
   }
 
+  String _phone() => _s(order['phone'] ?? order['user_phone']);
+
+  String _customerName() => _s(order['username'] ?? order['user_name']);
+
+  String _address() =>
+      _s(order['address'] ?? order['delivery_address'], 'لا يوجد عنوان');
+
+  (String, Color, IconData) _statusBadge() {
+    final st = controller.orderStatus(order);
+    final isAuto = controller.isDirectAssignment(order);
+
+    switch (st) {
+      case 'processing':
+      case 'approved':
+      case 'accepted':
+        return (
+          'جاري التحضير',
+          const Color(0xFF1976D2),
+          Icons.restaurant_rounded,
+        );
+      case 'assigned':
+      case 'ready':
+      case 'ready_for_driver':
+        return (
+          isAuto ? 'تعيين تلقائي' : 'جاهز للاستلام',
+          const Color(0xFF7B1FA2),
+          Icons.check_circle_outline_rounded,
+        );
+      case 'delivering':
+      case 'on_the_way':
+      case 'out_for_delivery':
+        return (
+          'جاري التوصيل',
+          const Color(0xFFE65100),
+          Icons.delivery_dining_rounded,
+        );
+      default:
+        return (
+          isAuto ? 'تعيين تلقائي' : 'مقبولة',
+          _primaryDark,
+          Icons.assignment_turned_in_rounded,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final url = '${order['maps_url'] ?? ''}'.trim();
     final orderId = _id();
     final branchName = _branchName();
-    final customerName = _s(order['username']);
-    final phone = _s(order['phone']);
-    final address = _s(order['address'], 'لا يوجد عنوان');
+    final customerName = _customerName();
+    final phone = _phone();
+    final address = _address();
+    final (badgeText, badgeColor, badgeIcon) = _statusBadge();
+    final canStart = controller.canStartDeliveryFor(order);
 
-    return InkWell(
+    return _DriverOrderShell(
       onTap: () => Get.to(() => const OrderDetailsView(), arguments: order),
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-        decoration: BoxDecoration(
-          color: _primary.withOpacity(.96),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withOpacity(.08)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.11),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _StatusBadge(text: badgeText, icon: badgeIcon, color: badgeColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      orderId > 0 ? 'طلبية #$orderId' : 'طلبية',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: HomeView._text,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'الفرع: $branchName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: HomeView._muted,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _InfoBox(
+                  icon: Icons.person_outline_rounded,
+                  label: 'الزبون',
+                  value: customerName,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _InfoBox(
+                  icon: Icons.phone_outlined,
+                  label: 'الهاتف',
+                  value: phone,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _AddressBox(address: address),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _OutlineOrderButton(
+                  label: 'الموقع',
+                  icon: Icons.directions_rounded,
+                  enabled: url.isNotEmpty,
+                  onTap: url.isEmpty
+                      ? null
+                      : () => launchUrl(
+                          Uri.parse(url),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                ),
+              ),
+              if (canStart) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _FilledOrderButton(
+                    label: 'بدأ التوصيل',
+                    icon: Icons.route_rounded,
+                    color: const Color(0xFFE65100),
+                    enabled: orderId > 0,
+                    onTap: () => controller.markOnTheWay(orderId),
+                  ),
+                ),
+              ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: _FilledOrderButton(
+                  label: 'تم التسليم',
+                  icon: Icons.check_rounded,
+                  color: _green,
+                  enabled: orderId > 0,
+                  onTap: () => controller.markDelivered(orderId),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DriverOrderShell extends StatelessWidget {
+  const _DriverOrderShell({required this.child, required this.onTap});
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: HomeView._primary.withOpacity(.08)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(.055),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: child,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
+    required this.text,
+    required this.icon,
+    required this.color,
+  });
+
+  final String text;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withOpacity(.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withOpacity(.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 11.5,
+              height: 1.1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBox extends StatelessWidget {
+  const _InfoBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.color = HomeView._primary,
+    this.softColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final Color? softColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: softColor ?? const Color(0xFFF9F5F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.18),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: const Text(
-                    'مقبولة',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: HomeView._muted,
+                    fontSize: 11,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        orderId > 0 ? 'طلبية #$orderId' : 'طلبية',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 21,
-                          fontWeight: FontWeight.w900,
-                          height: 1,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'الفرع: $branchName',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(.88),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: HomeView._text,
+                    fontSize: 13.5,
+                    height: 1.2,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(.08),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '$phone | $customerName',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        color: Colors.white70,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          address,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(.92),
-                            fontSize: 13,
-                            height: 1.3,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AddressBox extends StatelessWidget {
+  const _AddressBox({required this.address});
+
+  final String address;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F5F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HomeView._primary.withOpacity(.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 14),
-            Row(
+            child: const Icon(
+              Icons.location_on_outlined,
+              color: HomeView._primary,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: url.isEmpty
-                          ? null
-                          : () => launchUrl(
-                              Uri.parse(url),
-                              mode: LaunchMode.externalApplication,
-                            ),
-                      icon: const Icon(Icons.directions_rounded, size: 18),
-                      label: const Text(
-                        'الموقع',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withOpacity(.72)),
-                        disabledForegroundColor: Colors.white.withOpacity(.45),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+                const Text(
+                  'العنوان',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: HomeView._muted,
+                    fontSize: 11,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton(
-                      onPressed: orderId <= 0
-                          ? null
-                          : () => controller.markDelivered(orderId),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF05B94E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'تم التسليم',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  address,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: HomeView._text,
+                    fontSize: 13.2,
+                    height: 1.35,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PricePill extends StatelessWidget {
+  const _PricePill({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: HomeView._primary.withOpacity(.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: HomeView._primary.withOpacity(.10)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: HomeView._primary, size: 18),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: HomeView._muted,
+                    fontSize: 10.8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    color: HomeView._primaryDark,
+                    fontSize: 13.6,
+                    height: 1.2,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OutlineOrderButton extends StatelessWidget {
+  const _OutlineOrderButton({
+    required this.label,
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: OutlinedButton.icon(
+        onPressed: enabled ? onTap : null,
+        icon: Icon(icon, size: 15),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11.5),
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: HomeView._primary,
+          side: BorderSide(color: HomeView._primary.withOpacity(.35)),
+          disabledForegroundColor: HomeView._muted.withOpacity(.45),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          minimumSize: const Size(0, 40),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilledOrderButton extends StatelessWidget {
+  const _FilledOrderButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 40,
+      child: ElevatedButton.icon(
+        onPressed: enabled ? onTap : null,
+        icon: Icon(icon, size: 15),
+        label: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11.2),
+          ),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: color.withOpacity(.35),
+          disabledForegroundColor: Colors.white.withOpacity(.7),
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          minimumSize: const Size(0, 40),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -1187,12 +1452,14 @@ class _AcceptedOrderCard extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   const _ActionButton({
     required this.text,
+    required this.icon,
     required this.color,
     required this.disabled,
     required this.onTap,
   });
 
   final String text;
+  final IconData icon;
   final Color color;
   final bool disabled;
   final VoidCallback onTap;
@@ -1201,24 +1468,21 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: disabled ? .55 : 1,
-      child: Material(
-        color: color,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: disabled ? null : onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            width: 62,
-            height: 33,
-            child: Center(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                ),
-              ),
+      child: SizedBox(
+        height: 44,
+        child: ElevatedButton.icon(
+          onPressed: disabled ? null : onTap,
+          icon: Icon(icon, size: 18),
+          label: Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
         ),
